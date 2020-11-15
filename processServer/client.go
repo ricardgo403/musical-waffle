@@ -37,7 +37,7 @@ func f() {
 			}
 		default:
 			if mostrarProcesos {
-				fmt.Println("Cliente", "id: ", myProcess.Id, ":", i)
+				fmt.Println("Process id: ", myProcess.Id, ":", i)
 			}
 		}
 		time.Sleep(time.Millisecond * 500)
@@ -50,21 +50,17 @@ func client() {
 		fmt.Println(err)
 		return
 	}
-	//fmt.Println("Enviando: ", persona)
-	//err = gob.NewEncoder(c).Encode(persona)
 	err = gob.NewEncoder(c).Encode(clientId)
-
 	err = gob.NewDecoder(c).Decode(&myProcess)
 	if err != nil {
 		fmt.Println(err)
 		return
 	} else {
-		fmt.Println("Mensaje recibido:", myProcess)
+		fmt.Println("Proceso recibido:", myProcess)
 		go f()
 	}
 	c.Close()
 	fmt.Println("Disconnected...")
-	// return proceso
 }
 
 func sendProcess() {
@@ -73,36 +69,39 @@ func sendProcess() {
 		fmt.Println(err)
 		return
 	}
-	//fmt.Println("Enviando: ", persona)
-	//err = gob.NewEncoder(c).Encode(persona)
 	myIdChannel <- myProcess.Id
 	thisProcess := <-myReturnChannel
-	fmt.Println(thisProcess)
 	err = gob.NewEncoder(c).Encode(clientId)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = gob.NewEncoder(c).Encode(myProcess)
-	if err != nil {
-		fmt.Println(err)
-		return
-	} else {
-		fmt.Println("Mensaje enviado:", myProcess)
-		// go f(myProcess)
+	for i := 0; i < 5; i++ {
+		err = gob.NewEncoder(c).Encode(thisProcess)
+		if err != nil {
+			fmt.Println(err)
+			return
+		} else {
+			fmt.Println("Proceso enviado:", thisProcess)
+		}
 	}
-	err = gob.NewEncoder(c).Encode(myProcess)
-	if err != nil {
-		fmt.Println(err)
-		return
-	} else {
-		fmt.Println("Mensaje enviado:", myProcess)
-		// go f(myProcess)
-	}
+	// err = gob.NewEncoder(c).Encode(myProcess)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// } else {
+	// 	fmt.Println("Proceso enviado:", myProcess)
+	// }
+	// err = gob.NewEncoder(c).Encode(myProcess)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// } else {
+	// 	fmt.Println("Proceso enviado:", myProcess)
+	// }
 
 	defer c.Close()
 	fmt.Println("Disconnected...")
-	// return proceso
 }
 
 func main() {
@@ -111,6 +110,4 @@ func main() {
 	fmt.Scanln(&input)
 	sendProcess()
 	fmt.Scanln(&input)
-	// myIdChannel <- proceso.Id
-	// reply := <-myReturnChannel
 }
