@@ -85,21 +85,6 @@ func sendProcess() {
 			fmt.Println("Proceso enviado:", thisProcess)
 		}
 	}
-	// err = gob.NewEncoder(c).Encode(myProcess)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// } else {
-	// 	fmt.Println("Proceso enviado:", myProcess)
-	// }
-	// err = gob.NewEncoder(c).Encode(myProcess)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// } else {
-	// 	fmt.Println("Proceso enviado:", myProcess)
-	// }
-
 	defer c.Close()
 	fmt.Println("Disconnected...")
 }
