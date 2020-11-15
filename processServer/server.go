@@ -26,8 +26,7 @@ func f(myProcess process.Process) {
 		max uint64
 	)
 	max = 18446744073709551615
-
-	for i = 0; i < max; i++ {
+	for i = myProcess.Value; i < max; i++ {
 		select {
 		case msg1 := <-myIdChannel:
 			if msg1 == myProcess.Id {
@@ -39,7 +38,7 @@ func f(myProcess process.Process) {
 			}
 		default:
 			if mostrarProcesos {
-				fmt.Println("id: ", myProcess.Id, ":", i)
+				fmt.Println("id", myProcess.Id, ":", i)
 			}
 		}
 		time.Sleep(time.Millisecond * 500)
@@ -49,7 +48,6 @@ func f(myProcess process.Process) {
 func isClientConnected(id uuid.UUID) bool {
 	isConnected := false
 	for e := myClientsList.Front(); e != nil; e = e.Next() {
-		// do something with e.Value
 		if e.Value == id {
 			isConnected = true
 		}
@@ -69,35 +67,20 @@ func server() {
 				fmt.Println(err)
 				continue
 			} else {
-				// Create a new list and put some numbers in it.
-				if myClientsList.Len() < MAXCONN {
-					var clientId uuid.UUID
-					err = gob.NewDecoder(c).Decode(&clientId)
-					fmt.Println(clientId)
-					if err != nil {
-						fmt.Println(err)
-						return
-					}
-					if isClientConnected(clientId) {
-						var aux process.Process
-						err := gob.NewDecoder(c).Decode(&aux)
-						fmt.Println(aux)
-						if err != nil {
-							fmt.Println("Error**\n", err)
-							return
-						}
-
-						fmt.Println("Mensaje recibido:", aux)
-						myProcessesList.PushBack(aux)
-						go f(aux)
-
-						// c.Close()
-						fmt.Println("Disconnected...")
-					} else {
-						myClientsList.PushBack(clientId)
-						go handleClient(c)
-						fmt.Println("Finish handling client")
-					}
+				var clientId uuid.UUID
+				err = gob.NewDecoder(c).Decode(&clientId)
+				fmt.Println("Received a client id:", clientId)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				if isClientConnected(clientId) {
+					retrieveProcess(c, clientId)
+				} else if myClientsList.Len() < MAXCONN {
+					fmt.Println("This client id", clientId, "is not registered...")
+					myClientsList.PushBack(clientId)
+					go handleClient(c)
+					fmt.Println("Finish handling client")
 				}
 			}
 		}
@@ -105,51 +88,49 @@ func server() {
 }
 
 func handleClient(c net.Conn) {
-	//err := gob.NewDecoder(c).Decode(&proceso)
 	if myProcessesList.Len() > 0 {
 		var proceso = myProcessesList.Front().Value.(process.Process) //proceso["channel"] <- proceso["id"]
 		myIdChannel <- proceso.Id
 		reply := <-myReturnChannel
-		// fmt.Println("Respuesta: ", reply)
-		// if reply > 0 {
-		// 	proceso.Valor = reply
-		// 	fmt.Println("Proceso: ", proceso)
-		// 	err := gob.NewEncoder(c).Encode(proceso)
-		// 	if err != nil {
-		// 		fmt.Println(err)
-		// 	} else {
-		// 		fmt.Println("Mensaje:", proceso)
-		// 	}
-		// 	myProcessesList.Remove(myProcessesList.Front())
-		// }
-		nuevoProceso := reply
-		fmt.Println("Proceso: ", proceso)
-		fmt.Println("Proceso nuevo: ", nuevoProceso)
-		err := gob.NewEncoder(c).Encode(nuevoProceso)
+		thisProcess := reply
+		fmt.Println("Proceso a enviar: ", thisProcess)
+		err := gob.NewEncoder(c).Encode(thisProcess)
 		if err != nil {
 			fmt.Println(err)
 		} else {
-			fmt.Println("Mensaje:", nuevoProceso)
+			fmt.Println("Mensaje:", thisProcess)
 		}
 		myProcessesList.Remove(myProcessesList.Front())
 	}
 }
 
-func retrieveProcess(c net.Conn) {
+func deleteClient(clientId uuid.UUID) bool {
+	wasDeleted := false
+	for e := myClientsList.Front(); e != nil; e = e.Next() {
+		// do something with e.Value
+		if e.Value == clientId {
+			myClientsList.Remove(e)
+			wasDeleted = true
+			fmt.Println("Client was deleted:", wasDeleted)
+		}
+	}
+	return wasDeleted
+}
+
+func retrieveProcess(c net.Conn, clientId uuid.UUID) {
+	fmt.Println("This client id is already known:", clientId)
 	var aux process.Process
 	err := gob.NewDecoder(c).Decode(&aux)
-	fmt.Println(aux)
 	if err != nil {
 		fmt.Println("Error**\n", err)
-		return
+	} else {
+		fmt.Println("Mensaje recibido:", aux)
+		myProcessesList.PushBack(aux)
+		fmt.Println("Len Processes:", myProcessesList.Len())
+		deleteClient(clientId)
+		go f(aux)
+		fmt.Println("Disconnected...")
 	}
-
-	fmt.Println("Mensaje recibido:", aux)
-	myProcessesList.PushBack(aux)
-	go f(aux)
-
-	c.Close()
-	fmt.Println("Disconnected...")
 }
 
 func main() {
