@@ -26,8 +26,8 @@ func f(myProcess process.Process) {
 		max uint64
 	)
 	max = 18446744073709551615
-
-	for i = 0; i < max; i++ {
+	// fmt.Println(myProcess)
+	for i = myProcess.Value; i < max; i++ {
 		select {
 		case msg1 := <-myIdChannel:
 			if msg1 == myProcess.Id {
@@ -70,36 +70,38 @@ func server() {
 				continue
 			} else {
 				// Create a new list and put some numbers in it.
-				if myClientsList.Len() < MAXCONN {
-					var clientId uuid.UUID
-					err = gob.NewDecoder(c).Decode(&clientId)
-					fmt.Println(clientId)
-					if err != nil {
-						fmt.Println(err)
-						return
-					}
-					if isClientConnected(clientId) {
-						var aux process.Process
-						err := gob.NewDecoder(c).Decode(&aux)
-						fmt.Println(aux)
-						if err != nil {
-							fmt.Println("Error**\n", err)
-							return
-						}
+				var clientId uuid.UUID
+				err = gob.NewDecoder(c).Decode(&clientId)
+				fmt.Println("Received a client id:", clientId)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				if isClientConnected(clientId) {
+					// fmt.Println("This client id is already known:", clientId)
+					// var aux process.Process
+					// err := gob.NewDecoder(c).Decode(&aux)
+					// fmt.Println(aux)
+					// if err != nil {
+					// 	fmt.Println("Error**\n", err)
+					// 	continue
+					// } else {
+					// 	fmt.Println("Mensaje recibido:", aux)
+					// 	myProcessesList.PushBack(aux)
+					// 	go f(aux)
 
-						fmt.Println("Mensaje recibido:", aux)
-						myProcessesList.PushBack(aux)
-						go f(aux)
-
-						// c.Close()
-						fmt.Println("Disconnected...")
-					} else {
-						myClientsList.PushBack(clientId)
-						go handleClient(c)
-						fmt.Println("Finish handling client")
-					}
+					// 	// c.Close()
+					// 	fmt.Println("Disconnected...")
+					// }
+					retrieveProcess2(c, clientId)
+				} else if myClientsList.Len() < MAXCONN {
+					fmt.Println("This client id", clientId, "is not registered...")
+					myClientsList.PushBack(clientId)
+					go handleClient(c)
+					fmt.Println("Finish handling client")
 				}
 			}
+			// c.Close()
 		}
 	}
 }
@@ -150,6 +152,51 @@ func retrieveProcess(c net.Conn) {
 
 	c.Close()
 	fmt.Println("Disconnected...")
+}
+
+func deleteClient(clientId uuid.UUID) bool {
+	wasDeleted := false
+	for e := myClientsList.Front(); e != nil; e = e.Next() {
+		// do something with e.Value
+		if e.Value == clientId {
+			myClientsList.Remove(e)
+			wasDeleted = true
+			fmt.Println("Was deleted:", wasDeleted)
+		}
+	}
+	return wasDeleted
+}
+
+func retrieveProcess2(c net.Conn, clientId uuid.UUID) {
+	fmt.Println("This client id is already known:", clientId)
+	var aux process.Process
+	err := gob.NewDecoder(c).Decode(&aux)
+	fmt.Println(aux)
+	if err != nil {
+		fmt.Println("Error**\n", err)
+	} else {
+		fmt.Println("Mensaje recibido:", aux)
+		myProcessesList.PushBack(aux)
+		fmt.Println("Len Processes:", myProcessesList.Len())
+		deleteClient(clientId)
+		go f(aux)
+
+		// c.Close()
+		fmt.Println("Disconnected...")
+	}
+	// err = gob.NewDecoder(c).Decode(&aux)
+	// fmt.Println(aux)
+	// if err != nil {
+	// 	fmt.Println("Error**\n", err)
+	// 	return
+	// } else {
+	// 	fmt.Println("Mensaje recibido:", aux)
+	// 	myProcessesList.PushBack(aux)
+	// 	go f(aux)
+
+	// 	// c.Close()
+	// 	fmt.Println("Disconnected...")
+	// }
 }
 
 func main() {

@@ -91,6 +91,14 @@ func sendProcess() {
 		fmt.Println("Mensaje enviado:", myProcess)
 		// go f(myProcess)
 	}
+	err = gob.NewEncoder(c).Encode(myProcess)
+	if err != nil {
+		fmt.Println(err)
+		return
+	} else {
+		fmt.Println("Mensaje enviado:", myProcess)
+		// go f(myProcess)
+	}
 
 	defer c.Close()
 	fmt.Println("Disconnected...")
